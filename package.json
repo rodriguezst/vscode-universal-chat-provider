@@ -101,14 +101,35 @@
             "type": "string",
             "default": "http://127.0.0.1:8317",
             "order": 1,
-            "markdownDescription": "CLIProxyAPI server URL."
+            "markdownDescription": "CLIProxyAPI server URL. Can also be supplied through the environment variable named by `#universalChatProvider.baseUrlEnvVar#`."
           },
           "universalChatProvider.server.managementKey": {
             "type": "string",
             "default": "",
             "scope": "machine",
-            "order": 2,
+            "order": 5,
             "markdownDescription": "Management key used for account and quota administration. Enter the key itself, not its bcrypt hash."
+          },
+          "universalChatProvider.baseUrlEnvVar": {
+            "type": "string",
+            "default": "UNIVERSAL_CHAT_PROVIDER_BASE_URL",
+            "scope": "machine",
+            "order": 2,
+            "markdownDescription": "Environment variable that contains the CLIProxyAPI server URL. Set this to an empty string to disable environment-based URL lookup."
+          },
+          "universalChatProvider.apiKey": {
+            "type": "string",
+            "default": "",
+            "scope": "machine",
+            "order": 3,
+            "markdownDescription": "CLIProxyAPI API key used when neither SecretStorage nor the configured environment variable provides one. A settings file contains this value in plain text; prefer `#universalChatProvider.apiKeyEnvVar#`."
+          },
+          "universalChatProvider.apiKeyEnvVar": {
+            "type": "string",
+            "default": "UNIVERSAL_CHAT_PROVIDER_API_KEY",
+            "scope": "machine",
+            "order": 4,
+            "markdownDescription": "Environment variable that contains the CLIProxyAPI API key. Set this to an empty string to disable environment-based key lookup."
           }
         }
       },

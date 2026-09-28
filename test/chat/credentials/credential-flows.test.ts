@@ -44,6 +44,7 @@ describe('credential flows', () => {
 
   it('clears credentials, resets models, and re-shows onboarding', async () => {
     const { flow, credentials, registry } = createFlow()
+    credentials.get.mockResolvedValueOnce(undefined).mockResolvedValueOnce(undefined)
 
     await flow.clearCredentials()
 
@@ -53,6 +54,18 @@ describe('credential flows', () => {
       'CLIProxyAPI setup is incomplete. Configure a connection to load local models.',
       'Configure Connection',
     )
+  })
+
+  it('keeps imported credentials active when clearing only stored secrets', async () => {
+    const { flow, credentials, registry } = createFlow()
+    credentials.get.mockReset()
+    credentials.get.mockImplementation(async () => 'environment-key')
+
+    await flow.clearCredentials()
+
+    expect(credentials.clear).toHaveBeenCalledTimes(1)
+    expect(registry.reset).toHaveBeenCalledTimes(1)
+    expect(window.showInformationMessage).not.toHaveBeenCalled()
   })
 
   it('accepts a manually entered replacement key and refreshes', async () => {

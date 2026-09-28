@@ -33,7 +33,8 @@ export class CredentialFlows {
   async clearCredentials(): Promise<void> {
     await this.credentials.clear()
     this.registry.reset()
-    await this.showOnboarding(true)
+    if (await this.credentials.get() === undefined)
+      await this.showOnboarding(true)
   }
 
   async showOnboarding(force = false): Promise<void> {

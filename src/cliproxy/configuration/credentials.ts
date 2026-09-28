@@ -1,13 +1,23 @@
 import type { ExtensionContext } from 'vscode'
+import process from 'node:process'
 import { ConfigurationTarget, window, workspace } from 'vscode'
 
 export const SECRET_KEY = 'universalChatProvider.apiKey'
+export const DEFAULT_BASE_URL = 'http://127.0.0.1:8317'
+
+const DEFAULT_BASE_URL_ENV_VAR = 'UNIVERSAL_CHAT_PROVIDER_BASE_URL'
+const DEFAULT_API_KEY_ENV_VAR = 'UNIVERSAL_CHAT_PROVIDER_API_KEY'
 
 export class CredentialStore {
   constructor(private readonly context: ExtensionContext) {}
 
-  get(): Thenable<string | undefined> {
-    return this.context.secrets.get(SECRET_KEY)
+  async get(): Promise<string | undefined> {
+    const stored = await this.context.secrets.get(SECRET_KEY)
+    if (stored !== undefined && stored.trim() !== '')
+      return stored.trim()
+    const configuredKey = workspace.getConfiguration('universalChatProvider').get<string>('apiKey', '').trim()
+    return environmentValue('apiKeyEnvVar', DEFAULT_API_KEY_ENV_VAR)
+      ?? (configuredKey === '' ? undefined : configuredKey)
   }
 
   set(value: string): Thenable<void> {
@@ -21,7 +31,7 @@ export class CredentialStore {
   async prompt(): Promise<string | undefined> {
     const value = await window.showInputBox({
       title: 'CLIProxyAPI API Key',
-      prompt: 'Enter an API key accepted by the local CLIProxyAPI server.',
+      prompt: 'Enter an API key accepted by the CLIProxyAPI server.',
       password: true,
       ignoreFocusOut: true,
       validateInput: input => input.trim() ? undefined : 'An API key is required.',
@@ -33,11 +43,24 @@ export class CredentialStore {
   }
 }
 
+export function environmentValue(settingName: string, defaultVariable: string): string | undefined {
+  const variable = workspace.getConfiguration('universalChatProvider').get<string>(settingName, defaultVariable).trim()
+  if (variable === '')
+    return undefined
+  const value = process.env[variable]?.trim()
+  return value === '' ? undefined : value
+}
+
+export function configuredBaseUrl(): string {
+  return normalizeBaseUrl(environmentValue('baseUrlEnvVar', DEFAULT_BASE_URL_ENV_VAR)
+    ?? workspace.getConfiguration('universalChatProvider').get<string>('baseUrl', DEFAULT_BASE_URL))
+}
+
 export async function configureConnection(): Promise<boolean> {
   const settings = workspace.getConfiguration('universalChatProvider')
   const baseUrl = await window.showInputBox({
     title: 'CLIProxyAPI Base URL',
-    value: settings.get<string>('baseUrl', 'http://127.0.0.1:8317'),
+    value: configuredBaseUrl(),
     prompt: 'Base URL of the CLIProxyAPI server.',
     ignoreFocusOut: true,
     validateInput: validateHttpUrl,

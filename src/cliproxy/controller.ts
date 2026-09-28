@@ -6,14 +6,13 @@ import type { ServerStatus, ServerStatusSnapshot } from '@src/cliproxy/status'
 import type { ExtensionContext, OutputChannel } from 'vscode'
 import { AccountsService } from '@src/cliproxy/accounts/accounts'
 import { ManagementClient } from '@src/cliproxy/api/management-client'
-import { normalizeBaseUrl } from '@src/cliproxy/configuration/credentials'
+import { configuredBaseUrl } from '@src/cliproxy/configuration/credentials'
 import { claimCodexReset, listCodexResets } from '@src/cliproxy/quota/codex-resets'
 import { fetchQuotas, quotaProviderForModel } from '@src/cliproxy/quota/quota'
 import { countAccounts } from '@src/cliproxy/status'
 import { errorMessage } from '@src/shared/errors'
 import { window, workspace } from 'vscode'
 
-const DEFAULT_BASE_URL = 'http://127.0.0.1:8317'
 const MANAGEMENT_PROBE_TIMEOUT_MS = 1500
 const QUOTA_REFRESH_INTERVAL_MS = 180_000
 
@@ -40,7 +39,7 @@ export class ServerController implements ProxyConnection {
   }
 
   baseUrl(): string {
-    return normalizeBaseUrl(workspace.getConfiguration('universalChatProvider').get<string>('baseUrl', DEFAULT_BASE_URL))
+    return configuredBaseUrl()
   }
 
   async acquireRequest(): Promise<() => void> {

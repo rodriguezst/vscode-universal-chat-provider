@@ -92,7 +92,10 @@ The extension connects to an external [CLIProxyAPI](https://github.com/router-fo
 | Key                                           | Description                                                                                          | Type      | Default                   |
 | --------------------------------------------- | ---------------------------------------------------------------------------------------------------- | --------- | ------------------------- |
 | ▿ <b>Connection</b>                           |
-| `universalChatProvider.baseUrl`               | CLIProxyAPI server URL.                                                                              | `string`  | `"http://127.0.0.1:8317"` |
+| `universalChatProvider.baseUrl`               | CLIProxyAPI server URL. The environment variable below takes precedence.                             | `string`  | `"http://127.0.0.1:8317"` |
+| `universalChatProvider.baseUrlEnvVar`          | Environment variable containing the CLIProxyAPI URL. Empty disables lookup.                          | `string`  | `"UNIVERSAL_CHAT_PROVIDER_BASE_URL"` |
+| `universalChatProvider.apiKey`                 | API-key fallback when SecretStorage and the environment provide none. Plain text in settings.         | `string`  | `""`                      |
+| `universalChatProvider.apiKeyEnvVar`           | Environment variable containing the CLIProxyAPI API key. Empty disables lookup.                       | `string`  | `"UNIVERSAL_CHAT_PROVIDER_API_KEY"` |
 | `universalChatProvider.server.managementKey`  | Management key used for account and quota administration. Enter the key itself, not its bcrypt hash. | `string`  | `""`                      |
 | ▿ <b>Status Bar</b>                           |
 | `universalChatProvider.showQuotaWarnings`     | Warn in the status bar when the model in use is low on quota.                                        | `boolean` | `true`                    |
@@ -150,7 +153,25 @@ The proxy resolves `$CPA-SESSION-ID` from its session identity. Endpoints added 
 2. Run *Universal Chat Provider: Configure Connection* and enter its URL and API key.
 3. To add or manage accounts through the extension, enter the server’s management key (not its bcrypt hash) in `universalChatProvider.server.managementKey`.
 
-The extension never starts, stops, updates, or configures CLIProxyAPI. The API key is stored in VS Code `SecretStorage`; the management key remains in your VS Code settings.
+The extension never starts, stops, updates, or configures CLIProxyAPI.
+
+For reproducible VM/server deployments, export these variables before starting code-server:
+
+```bash
+export UNIVERSAL_CHAT_PROVIDER_BASE_URL="http://your-cli-proxy:8317"
+export UNIVERSAL_CHAT_PROVIDER_API_KEY="your-proxy-api-key"
+```
+
+Alternatively, set the URL and a plain-text API-key fallback in machine `settings.json`:
+
+```json
+{
+  "universalChatProvider.baseUrl": "http://your-cli-proxy:8317",
+  "universalChatProvider.apiKey": "your-proxy-api-key"
+}
+```
+
+Credential resolution is: SecretStorage, then the configured API-key environment variable, then `universalChatProvider.apiKey`. This avoids browser-bound SecretStorage setup while still allowing a user-entered key to override deployment defaults. **Clear Stored API Key** clears only SecretStorage; imported credentials remain active.
 
 ## Development
 
