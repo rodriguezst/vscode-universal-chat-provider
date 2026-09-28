@@ -10,22 +10,15 @@ const LOGIN_TIMEOUT_MS = 180_000
 const LOGIN_POLL_MS = 1500
 
 export interface AccountsDeps {
-  resolveManagement: (start: boolean) => Promise<ManagementEndpoint | undefined>
-  currentManagement: () => ManagementEndpoint | undefined
+  resolveManagement: () => Promise<ManagementEndpoint | undefined>
   state?: Pick<Memento, 'get' | 'update'>
-  persistOpenAICompatibility?: (providers: OpenAICompatibilityProvider[]) => Promise<void>
   onAccountsChanged: (expectedModelIds?: readonly string[]) => Promise<void>
 }
 
 export class AccountsService {
-  private loginPrompted = false
   private loginPromise: Promise<void> | undefined
 
   constructor(private readonly deps: AccountsDeps) {}
-
-  reset(): void {
-    this.loginPrompted = false
-  }
 
   async login(): Promise<void> {
     this.loginPromise ??= this.doLogin().finally(() => {
@@ -35,7 +28,7 @@ export class AccountsService {
   }
 
   private async doLogin(): Promise<void> {
-    const management = await this.deps.resolveManagement(true)
+    const management = await this.deps.resolveManagement()
     if (management === undefined)
       return
 
@@ -158,12 +151,7 @@ export class AccountsService {
       const updated = [...existing, provider]
       const expectedModelIds = draft.modelIds.map(modelId => `${provider.name}/${modelId}`)
       await client.putOpenAICompatibility(updated)
-      try {
-        await this.deps.persistOpenAICompatibility?.(updated)
-      }
-      finally {
-        await this.deps.onAccountsChanged(expectedModelIds)
-      }
+      await this.deps.onAccountsChanged(expectedModelIds)
       void window.showInformationMessage(`OpenAI-compatible endpoint “${provider.name}” added (${draft.modelIds.length} models).`)
     }
     catch (error) {
@@ -172,7 +160,7 @@ export class AccountsService {
   }
 
   async manageAccounts(): Promise<void> {
-    const management = await this.deps.resolveManagement(false)
+    const management = await this.deps.resolveManagement()
     if (management === undefined)
       return
     const client = new ManagementClient(management.baseUrl, management.key)
@@ -217,7 +205,6 @@ export class AccountsService {
       if (picked.account === 'openai-compatibility') {
         const remaining = endpoints.filter(endpoint => endpoint.name !== picked.label)
         await client.putOpenAICompatibility(remaining)
-        await this.deps.persistOpenAICompatibility?.(remaining)
       }
       else {
         await client.deleteAuthFile(picked.label)
@@ -228,31 +215,5 @@ export class AccountsService {
     catch (error) {
       void window.showErrorMessage(`Could not remove ${picked.label}: ${errorMessage(error)}`)
     }
-  }
-
-  async maybePromptLogin(): Promise<void> {
-    if (this.loginPrompted)
-      return
-    const management = this.deps.currentManagement()
-    if (management === undefined)
-      return
-    this.loginPrompted = true
-    try {
-      const client = new ManagementClient(management.baseUrl, management.key)
-      const [files, endpoints] = await Promise.all([
-        client.listAuthFiles(),
-        client.listOpenAICompatibility().catch((): OpenAICompatibilityProvider[] => []),
-      ])
-      if (files.length > 0 || endpoints.length > 0)
-        return
-      const choice = await window.showInformationMessage(
-        'CLIProxyAPI is running but no model accounts are connected yet.',
-        'Add Account',
-        'Later',
-      )
-      if (choice === 'Add Account')
-        await this.login()
-    }
-    catch {}
   }
 }

@@ -1,4 +1,3 @@
-import type { ServerStatus } from '@src/cliproxy/controller'
 import type { ExtensionContext } from 'vscode'
 import { UniversalChatProvider } from '@src/chat/provider'
 import { ServerController } from '@src/cliproxy/controller'
@@ -13,25 +12,18 @@ let controller: ServerController | undefined
 
 export function activate(context: ExtensionContext): void {
   const output = window.createOutputChannel('Universal Chat Provider', { log: true })
-  const serverOutput = window.createOutputChannel('CLIProxyAPI Server')
   setJsonValidationErrorReporter(message => output.error(message))
-  controller = new ServerController(context, output, serverOutput)
+  controller = new ServerController(context, output)
   provider = new UniversalChatProvider(context, output, controller, async () => controller!.login())
 
   const statusBar = createStatusBar()
-  // Status and quota arrive on separate listeners; re-render the bar from both on either change.
-  let lastStatus: ServerStatus = 'starting'
-  const renderStatusBar = (): void => updateStatusBar(statusBar, lastStatus, provider?.quotaSections() ?? [], provider?.currentModelQuota())
+  const renderStatusBar = (): void => updateStatusBar(statusBar, 'external', provider?.quotaSections() ?? [], provider?.currentModelQuota())
   provider.onActivity = (model) => {
     renderStatusBar()
     controller!.scheduleQuotaRefresh(model)
   }
   controller.setRefreshListener(async (expectedModelIds) => {
     await provider?.forceRefresh(false, expectedModelIds)
-  })
-  controller.setStatusListener((status) => {
-    lastStatus = status
-    renderStatusBar()
   })
   controller.setQuotaListener((reports) => {
     provider?.setQuotas(reports)
@@ -41,17 +33,15 @@ export function activate(context: ExtensionContext): void {
 
   context.subscriptions.push(
     output,
-    serverOutput,
     controller,
     statusBar,
     provider,
-    // Re-render when the quota-warning settings change so the bar reflects them without a restart.
     workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration('universalChatProvider.showQuotaWarnings') || event.affectsConfiguration('universalChatProvider.quotaWarningThreshold'))
         renderStatusBar()
     }),
     lm.registerLanguageModelChatProvider('universal-chat-provider', provider),
-    ...registerCommands(provider, controller, output, serverOutput),
+    ...registerCommands(provider, controller, output),
   )
 
   statusBar.show()

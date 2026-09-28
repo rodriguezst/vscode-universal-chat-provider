@@ -5,10 +5,8 @@ import { formatPercent, formatResetCountdown } from '@src/cliproxy/quota/quota'
 import { formatQuotaRemaining } from '@src/extension/ui/quota-menu'
 import { MarkdownString, StatusBarAlignment, ThemeColor, window, workspace } from 'vscode'
 
-// Default remaining-quota percent below which the status bar warns; overridable per setting.
 const DEFAULT_LOW_PERCENT = 10
 
-// Percent below which to warn, or undefined when warnings are disabled.
 function warnBelow(): number | undefined {
   const cfg = workspace.getConfiguration('universalChatProvider')
   return cfg.get<boolean>('showQuotaWarnings', true)
@@ -18,9 +16,6 @@ function warnBelow(): number | undefined {
 
 const PRESENTATION: Record<ServerStatus, { icon: string, tooltip?: string }> = {
   external: { icon: '$(server)', tooltip: 'using an external server' },
-  starting: { icon: '$(loading~spin)', tooltip: 'starting the managed server…' },
-  running: { icon: '$(server-process)' },
-  error: { icon: '$(warning)', tooltip: 'managed server is not running' },
 }
 
 export function createStatusBar(): StatusBarItem {
@@ -38,13 +33,10 @@ export function updateStatusBar(
   const { icon, tooltip } = PRESENTATION[status]
   const threshold = warnBelow()
   const low = threshold !== undefined && current !== undefined && current.remainingPercent < threshold
-  const unavailable = status === 'error'
-  statusBar.text = unavailable
-    ? '$(warning) Universal Chat Provider'
-    : low
-      ? `$(warning) ${current.name} · ${formatPercent(current.remainingPercent)} left`
-      : `${icon} Universal Chat Provider`
-  statusBar.backgroundColor = unavailable || low ? new ThemeColor('statusBarItem.warningBackground') : undefined
+  statusBar.text = low
+    ? `$(warning) ${current.name} · ${formatPercent(current.remainingPercent)} left`
+    : `${icon} Universal Chat Provider`
+  statusBar.backgroundColor = low ? new ThemeColor('statusBarItem.warningBackground') : undefined
   statusBar.tooltip = buildTooltip(icon, tooltip, sections, threshold)
 }
 
@@ -75,7 +67,6 @@ function escapeTableCell(value: string): string {
   return value.replaceAll('|', '\\|').replaceAll('\n', ' ')
 }
 
-// Fixed 10-block track so remaining capacity reads as empty space, not a shorter full bar.
 function gaugeBar(percent: number | undefined): string {
   if (percent === undefined)
     return ''

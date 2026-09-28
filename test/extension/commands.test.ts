@@ -1,5 +1,5 @@
 import type { UniversalChatProvider } from '@src/chat/provider'
-import type { ServerController, ServerMode, ServerStatusSnapshot } from '@src/cliproxy/controller'
+import type { ServerController, ServerStatusSnapshot } from '@src/cliproxy/controller'
 import type { QuotaSection } from '@src/extension/ui/quota-menu'
 import type { QuickPickItem } from 'vscode'
 import { readFileSync } from 'node:fs'
@@ -33,9 +33,6 @@ describe('registerCommands', () => {
     ['login', (harness: CommandHarness) => harness.controller.login],
     ['manageAccounts', (harness: CommandHarness) => harness.controller.manageAccounts],
     ['configure', (harness: CommandHarness) => harness.provider.configure],
-    ['restartServer', (harness: CommandHarness) => harness.controller.restartServer],
-    ['updateBinary', (harness: CommandHarness) => harness.controller.updateBinary],
-    ['resetServer', (harness: CommandHarness) => harness.controller.resetServer],
   ] as const)('forwards %s to its owner', async (command, getMethod) => {
     const harness = createCommandHarness()
 
@@ -92,14 +89,12 @@ describe('registerCommands', () => {
     expect(provider.clearCredentials).toHaveBeenCalledTimes(1)
   })
 
-  it('shows the extension and server output channels independently', async () => {
-    const { output, serverOutput } = createCommandHarness()
+  it('shows extension logs', async () => {
+    const { output } = createCommandHarness()
 
     await commands.executeCommand('universalChatProvider.showLogs')
-    await commands.executeCommand('universalChatProvider.showServerLogs')
 
     expect(output.show).toHaveBeenCalledWith(true)
-    expect(serverOutput.show).toHaveBeenCalledWith(true)
   })
 
   it('opens settings scoped to this extension', async () => {
@@ -115,45 +110,34 @@ describe('registerCommands', () => {
 })
 
 describe('manageProvider', () => {
-  it.each([
-    {
-      mode: 'managed',
-      snapshot: { mode: 'managed', status: 'running', baseUrl: 'http://127.0.0.1:8317' },
-      present: ['$(debug-restart) Restart Server', '$(cloud-download) Update Proxy Binary'],
-      absent: '$(settings-gear) Configure Connection',
-    },
-    {
-      mode: 'external',
-      snapshot: { mode: 'external', status: 'external', baseUrl: 'http://127.0.0.1:8317' },
-      present: ['$(settings-gear) Configure Connection'],
-      absent: '$(debug-restart) Restart Server',
-    },
-  ] as const)('shows $mode actions', async ({ mode, snapshot, present, absent }) => {
+  it('always shows connection actions and no lifecycle actions', async () => {
     const { controller } = createCommandHarness()
-    controller.mode.mockReturnValue(mode)
-    controller.statusSnapshot.mockResolvedValue(snapshot)
+    controller.statusSnapshot.mockResolvedValue({
+      status: 'external',
+      baseUrl: 'http://127.0.0.1:8317',
+      version: '8.1.0',
+      accounts: 2,
+    })
     window.showQuickPick.mockResolvedValueOnce(undefined)
 
     await commands.executeCommand('universalChatProvider.manage')
 
     const labels = quickPickLabels()
-    expect(labels).toEqual(expect.arrayContaining([...present]))
-    expect(labels).not.toContain(absent)
-    expect(labels).not.toContain('$(key) Import API Key from Config')
+    expect(labels[0]).toBe('$(server) External CLI Proxy API server')
+    expect(labels).toContain('$(settings-gear) Configure Connection')
   })
 
-  it.each([
-    ['managed', { mode: 'managed', status: 'running', baseUrl: 'http://127.0.0.1:8317' }, 'universalChatProvider.showServerLogs'],
-    ['external', { mode: 'external', status: 'external', baseUrl: 'http://127.0.0.1:8317' }, 'universalChatProvider.showLogs'],
-  ] as const)('dispatches the %s status row', async (mode, snapshot, command) => {
+  it('dispatches the status row to extension logs', async () => {
     const { controller } = createCommandHarness()
-    controller.mode.mockReturnValue(mode)
-    controller.statusSnapshot.mockResolvedValue(snapshot)
+    controller.statusSnapshot.mockResolvedValue({
+      status: 'external',
+      baseUrl: 'http://127.0.0.1:8317',
+    })
     window.showQuickPick.mockImplementationOnce(async items => (items as QuickPickItem[])[0])
 
     await commands.executeCommand('universalChatProvider.manage')
 
-    expect(commands.executeCommand).toHaveBeenCalledWith(command)
+    expect(commands.executeCommand).toHaveBeenCalledWith('universalChatProvider.showLogs')
   })
 })
 
@@ -168,26 +152,23 @@ function createCommandHarness() {
     clearCredentials: vi.fn(async () => {}),
   }
   const controller = {
-    mode: vi.fn<() => ServerMode>(() => 'managed'),
-    statusSnapshot: vi.fn<() => Promise<ServerStatusSnapshot>>(async () => ({ mode: 'managed', status: 'running', baseUrl: 'http://127.0.0.1:8317' })),
+    statusSnapshot: vi.fn<() => Promise<ServerStatusSnapshot>>(async () => ({
+      status: 'external',
+      baseUrl: 'http://127.0.0.1:8317',
+    })),
     login: vi.fn(async () => {}),
     manageAccounts: vi.fn(async () => {}),
     refreshQuotas: vi.fn(async () => {}),
     listCodexResets: vi.fn(async () => []),
     claimCodexReset: vi.fn(async () => 'failed' as const),
-    restartServer: vi.fn(async () => {}),
-    updateBinary: vi.fn(async () => {}),
-    resetServer: vi.fn(async () => {}),
   }
   const output = createOutputChannelMock('Universal Chat Provider')
-  const serverOutput = createOutputChannelMock('CLIProxyAPI Server')
   registerCommands(
     provider as unknown as UniversalChatProvider,
     controller as unknown as ServerController,
     output as never,
-    serverOutput as never,
   )
-  return { provider, controller, output, serverOutput }
+  return { provider, controller, output }
 }
 
 type CommandHarness = ReturnType<typeof createCommandHarness>

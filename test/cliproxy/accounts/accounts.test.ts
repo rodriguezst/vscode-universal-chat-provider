@@ -64,7 +64,6 @@ describe('accounts login completion', () => {
     const onAccountsChanged = vi.fn()
     const service = new AccountsService({
       resolveManagement: async () => ({ baseUrl: 'http://127.0.0.1:8317', key: 'k' }),
-      currentManagement: () => undefined,
       onAccountsChanged,
     })
 
@@ -178,8 +177,7 @@ describe('openai-compatible endpoint', () => {
         'models': [{ name: 'x' }],
       },
     ])
-    const persistOpenAICompatibility = vi.fn<() => Promise<void>>().mockResolvedValue()
-    const { service, onAccountsChanged } = serviceWith({ persistOpenAICompatibility })
+    const { service, onAccountsChanged } = serviceWith()
 
     await service.login()
 
@@ -201,9 +199,6 @@ describe('openai-compatible endpoint', () => {
         ],
       },
     ])
-    expect(persistOpenAICompatibility).toHaveBeenCalledWith(expect.arrayContaining([
-      expect.objectContaining({ name: 'opencode.ai' }),
-    ]))
     expect(window.showInformationMessage).toHaveBeenCalledWith('OpenAI-compatible endpoint “opencode.ai” added (2 models).')
     expect(onAccountsChanged).toHaveBeenCalledTimes(1)
   })
@@ -274,7 +269,7 @@ describe('openai-compatible endpoint', () => {
     ])
   })
 
-  it('refreshes models when persistence fails after the live endpoint update', async () => {
+  it('refreshes models after the live endpoint update succeeds', async () => {
     window.showQuickPick.mockResolvedValue({
       label: 'OpenAI-compatible endpoint',
       account: 'openai-compatibility',
@@ -285,16 +280,15 @@ describe('openai-compatible endpoint', () => {
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ data: [{ id: 'gpt-5.5' }] })))
     vi.spyOn(ManagementClient.prototype, 'listOpenAICompatibility').mockResolvedValue([])
     vi.spyOn(ManagementClient.prototype, 'putOpenAICompatibility').mockResolvedValue()
-    const persistOpenAICompatibility = vi.fn<() => Promise<void>>().mockRejectedValue(new Error('storage full'))
-    const { service, onAccountsChanged } = serviceWith({ persistOpenAICompatibility })
+    const { service, onAccountsChanged } = serviceWith()
 
     await service.login()
 
     expect(onAccountsChanged).toHaveBeenCalledTimes(1)
-    expect(window.showErrorMessage).toHaveBeenCalledWith('Could not add OpenAI-compatible endpoint: storage full')
+    expect(window.showErrorMessage).not.toHaveBeenCalledWith('Could not add OpenAI-compatible endpoint: storage full')
   })
 
-  it('does not persist or refresh when the live endpoint update fails', async () => {
+  it('does not refresh when the live endpoint update fails', async () => {
     window.showQuickPick.mockResolvedValue({
       label: 'OpenAI-compatible endpoint',
       account: 'openai-compatibility',
@@ -305,12 +299,10 @@ describe('openai-compatible endpoint', () => {
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ data: [{ id: 'gpt-5.5' }] })))
     vi.spyOn(ManagementClient.prototype, 'listOpenAICompatibility').mockResolvedValue([])
     vi.spyOn(ManagementClient.prototype, 'putOpenAICompatibility').mockRejectedValue(new Error('write failed'))
-    const persistOpenAICompatibility = vi.fn<() => Promise<void>>().mockResolvedValue()
-    const { service, onAccountsChanged } = serviceWith({ persistOpenAICompatibility })
+    const { service, onAccountsChanged } = serviceWith()
 
     await service.login()
 
-    expect(persistOpenAICompatibility).not.toHaveBeenCalled()
     expect(onAccountsChanged).not.toHaveBeenCalled()
     expect(window.showErrorMessage).toHaveBeenCalledWith('Could not add OpenAI-compatible endpoint: write failed')
   })
@@ -368,13 +360,11 @@ describe('openai-compatible endpoint', () => {
       account: 'openai-compatibility',
     })
     window.showWarningMessage.mockResolvedValue('Remove')
-    const persistOpenAICompatibility = vi.fn<() => Promise<void>>().mockResolvedValue()
-    const { service, onAccountsChanged } = serviceWith({ persistOpenAICompatibility })
+    const { service, onAccountsChanged } = serviceWith()
 
     await service.manageAccounts()
 
     expect(put).toHaveBeenCalledWith([])
-    expect(persistOpenAICompatibility).toHaveBeenCalledWith([])
     expect(onAccountsChanged).toHaveBeenCalledTimes(1)
   })
 })
@@ -387,7 +377,6 @@ function serviceWith(
     onAccountsChanged,
     service: new AccountsService({
       resolveManagement: async () => ({ baseUrl: 'http://127.0.0.1:8317', key: 'k' }),
-      currentManagement: () => undefined,
       onAccountsChanged,
       ...overrides,
     }),

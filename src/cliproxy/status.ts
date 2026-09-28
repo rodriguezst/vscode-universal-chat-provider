@@ -3,11 +3,9 @@ import { ManagementClient } from '@src/cliproxy/api/management-client'
 
 const STATUS_PROBE_TIMEOUT_MS = 1500
 
-export type ServerMode = 'managed' | 'external'
-export type ServerStatus = 'external' | 'starting' | 'running' | 'error'
+export type ServerStatus = 'external'
 
 export interface ServerStatusSnapshot {
-  mode: ServerMode
   status: ServerStatus
   baseUrl: string
   version?: string

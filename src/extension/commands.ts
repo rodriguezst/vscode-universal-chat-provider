@@ -16,7 +16,6 @@ export function registerCommands(
   provider: UniversalChatProvider,
   controller: ServerController,
   output: OutputChannel,
-  serverOutput: OutputChannel,
 ): Disposable[] {
   const actions: CommandDescriptor[] = [
     { command: 'universalChatProvider.login', run: async () => controller.login(), group: 0, label: '$(account) Add Account (Login)', description: 'Codex, Claude, Antigravity, and more' },
@@ -37,10 +36,7 @@ export function registerCommands(
       void window.showInformationMessage(`CLIProxyAPI exposed ${models.length} chat models.`)
     }, group: 1, label: '$(refresh) Refresh Models', description: 'Reload models and capabilities' },
     { command: 'universalChatProvider.setUtilityModel', run: async () => setUtilityModel(provider), group: 1, label: '$(sparkle) Set Utility Model', description: 'Run Copilot\'s commit messages, titles & summaries on your models' },
-    { command: 'universalChatProvider.restartServer', run: async () => controller.restartServer(), group: 2, modes: ['managed'], label: '$(debug-restart) Restart Server', description: 'Restart the managed server' },
-    { command: 'universalChatProvider.updateBinary', run: async () => controller.updateBinary(), group: 2, modes: ['managed'], label: '$(cloud-download) Update Proxy Binary', description: 'Check and apply the selected update policy' },
-    { command: 'universalChatProvider.resetServer', run: async () => controller.resetServer(), group: 2, modes: ['managed'], label: '$(discard) Reset Managed Server', description: 'Recreate the config and keys' },
-    { command: 'universalChatProvider.configure', run: async () => provider.configure(), group: 2, modes: ['external'], label: '$(settings-gear) Configure Connection', description: 'Set the proxy URL and API key' },
+    { command: 'universalChatProvider.configure', run: async () => provider.configure(), group: 2, label: '$(settings-gear) Configure Connection', description: 'Set the CLIProxyAPI URL and API key' },
     { command: 'universalChatProvider.openSettings', run: async () => commands.executeCommand('workbench.action.openSettings', `@ext:${extensionId}`), group: 3, label: '$(gear) Open Settings', description: 'Edit this extension\'s settings' },
     { command: 'universalChatProvider.showLogs', run: () => output.show(true), group: 3, label: '$(output) Show Extension Logs', description: 'Diagnostics from the extension itself' },
     { command: 'universalChatProvider.clearCredentials', run: async () => {
@@ -55,7 +51,6 @@ export function registerCommands(
   ]
   return [
     commands.registerCommand('universalChatProvider.manage', async () => manageProvider(controller, actions)),
-    commands.registerCommand('universalChatProvider.showServerLogs', () => serverOutput.show(true)),
     ...actions.map(action => commands.registerCommand(action.command, action.run)),
   ]
 }

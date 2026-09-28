@@ -57,7 +57,7 @@
 2. **Add an account** — accept the **Add Account** prompt (or run `Universal Chat Provider: Add Account`), pick a provider, and complete OAuth in your browser. Models refresh automatically.
 3. **Chat** — open Copilot Chat and select a model under **Universal Chat Provider**.
 
-Manage everything from the status bar item or the *Universal Chat Provider: Manage Provider* command — inspect quota, redeem OpenAI-provided Codex reset credits, list/remove accounts, restart, update, or reset the managed server.
+Manage everything from the status bar item or the *Universal Chat Provider: Manage Provider* command — inspect quota, redeem OpenAI-provided Codex reset credits, and list/remove accounts.
 
 ## Commit messages, titles, and summaries
 
@@ -72,7 +72,7 @@ The command points Copilot's `chat.utilityModel`, `chat.utilitySmallModel`, and 
 
 ## How it works
 
-The extension runs [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) locally and registers its models with VS Code. Your subscriptions then appear directly in the Copilot Chat model picker.
+The extension connects to an external [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) server and registers its models with VS Code. Your subscriptions then appear directly in the Copilot Chat model picker.
 
 <p align="center">
   <picture>
@@ -89,24 +89,19 @@ The extension runs [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) l
 
 <!-- configs -->
 
-| Key                                           | Description                                                                                                                                                                     | Type      | Default                                                                                                                         |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Key                                           | Description                                                                                          | Type      | Default                   |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------- | --------- | ------------------------- |
 | ▿ <b>Connection</b>                           |
-| `universalChatProvider.server.mode`           | How CLIProxyAPI is provided.                                                                                                                                                    | `string`  | `"managed"`                                                                                                                     |
-| `universalChatProvider.baseUrl`               | CLIProxyAPI server URL. Used only in external mode.                                                                                                                             | `string`  | `"http://127.0.0.1:8317"`                                                                                                       |
-| `universalChatProvider.server.managementKey`  | External mode only. Enter your server's existing management key, not its bcrypt hash. Managed mode generates and stores its own key automatically and ignores this setting.     | `string`  | `""`                                                                                                                            |
-| ▿ <b>Managed Server</b>                       |
-| `universalChatProvider.server.updatePolicy`   | How managed CLIProxyAPI updates are handled.                                                                                                                                    | `string`  | `"automatic"`                                                                                                                   |
-| `universalChatProvider.server.version`        | CLIProxyAPI release used when update policy is Manual. Use latest or an exact version (8.0.3 or newer).                                                                         | `string`  | `"latest"`                                                                                                                      |
-| `universalChatProvider.server.extraConfig`    | Custom YAML overrides for the managed server, such as proxy, retries, and account selection. Overriding connection settings, credentials, or providers can break the extension. | `string`  | `"# requests:\n#   proxy-url: http://127.0.0.1:7890\n# routing:\n#   strategy: fill-first\n#   retry:\n#     request-retry: 3"` |
+| `universalChatProvider.baseUrl`               | CLIProxyAPI server URL.                                                                              | `string`  | `"http://127.0.0.1:8317"` |
+| `universalChatProvider.server.managementKey`  | Management key used for account and quota administration. Enter the key itself, not its bcrypt hash. | `string`  | `""`                      |
 | ▿ <b>Status Bar</b>                           |
-| `universalChatProvider.showQuotaWarnings`     | Warn in the status bar when the model in use is low on quota.                                                                                                                   | `boolean` | `true`                                                                                                                          |
-| `universalChatProvider.quotaWarningThreshold` | Remaining-quota percent below which the status bar warning appears.                                                                                                             | `number`  | `10`                                                                                                                            |
+| `universalChatProvider.showQuotaWarnings`     | Warn in the status bar when the model in use is low on quota.                                        | `boolean` | `true`                    |
+| `universalChatProvider.quotaWarningThreshold` | Remaining-quota percent below which the status bar warning appears.                                  | `number`  | `10`                      |
 | ▿ <b>Provider Specific</b>                    |
-| `universalChatProvider.codex.webSearch`       | Let Codex look things up online and open web pages while it answers.                                                                                                            | `boolean` | `false`                                                                                                                         |
-| `universalChatProvider.claude.webSearch`      | Let Claude look things up online while it answers.                                                                                                                              | `boolean` | `false`                                                                                                                         |
+| `universalChatProvider.codex.webSearch`       | Let Codex look things up online and open web pages while it answers.                                 | `boolean` | `false`                   |
+| `universalChatProvider.claude.webSearch`      | Let Claude look things up online while it answers.                                                   | `boolean` | `false`                   |
 | ▿ <b>Advanced</b>                             |
-| `universalChatProvider.debugLevel`            | Diagnostic detail to collect. Request Logging prompts before restarting the managed server and writes sensitive payloads to disk.                                               | `string`  | `"off"`                                                                                                                         |
+| `universalChatProvider.debugLevel`            | Diagnostic detail to collect.                                                                        | `string`  | `"off"`                   |
 
 <!-- configs -->
 
@@ -123,15 +118,11 @@ The extension runs [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) l
 | `universalChatProvider.login`            | Universal Chat Provider: Add Account (Login)                                         |
 | `universalChatProvider.manageAccounts`   | Universal Chat Provider: Manage Accounts                                             |
 | `universalChatProvider.showQuota`        | Universal Chat Provider: Show Quota                                                  |
-| `universalChatProvider.restartServer`    | Universal Chat Provider: Restart Managed Server                                      |
-| `universalChatProvider.updateBinary`     | Universal Chat Provider: Update Proxy Binary                                         |
-| `universalChatProvider.resetServer`      | Universal Chat Provider: Reset Managed Server                                        |
 | `universalChatProvider.configure`        | Universal Chat Provider: Configure Connection                                        |
 | `universalChatProvider.refresh`          | Universal Chat Provider: Refresh Models                                              |
 | `universalChatProvider.setUtilityModel`  | Universal Chat Provider: Set Utility Model (commit messages, chat titles, summaries) |
 | `universalChatProvider.clearCredentials` | Universal Chat Provider: Clear Stored API Key                                        |
 | `universalChatProvider.showLogs`         | Universal Chat Provider: Show Logs                                                   |
-| `universalChatProvider.showServerLogs`   | Universal Chat Provider: Show Server Output                                          |
 | `universalChatProvider.openSettings`     | Universal Chat Provider: Open Settings                                               |
 
 <!-- commands -->
@@ -151,44 +142,15 @@ Endpoints added through the extension receive these CLIProxyAPI header defaults,
 | `opencode.ai` | `x-opencode-session` | `$CPA-SESSION-ID` |
 | `openrouter.ai` | `x-session-id` | `$CPA-SESSION-ID` |
 
-The proxy resolves `$CPA-SESSION-ID` from its session identity. Existing managed endpoints receive missing defaults when their config is regenerated. Existing headers take precedence regardless of casing, including empty values; `server.extraConfig` remains the final override. Other endpoints are unchanged.
+The proxy resolves `$CPA-SESSION-ID` from its session identity. Endpoints added through the extension receive these defaults, while existing server configuration is not rewritten. Add the relevant mapping under a provider's `headers` in your CLIProxyAPI configuration, or re-add the endpoint through the extension. Migrate custom mappings that copy `$X-Session-ID` to `$CPA-SESSION-ID`, since the extension no longer supplies the former header. A one-time session/cache reset may occur when changing identity sources.
 
-Existing external-server endpoints are not rewritten. Add the relevant mapping under that provider's `headers` in your CLIProxyAPI configuration, or re-add the endpoint through the extension. Migrate custom mappings that copy `$X-Session-ID` to `$CPA-SESSION-ID`, since the extension no longer supplies the former header. Update older pinned or external proxies before relying on this behavior. A one-time session/cache reset may occur when changing identity sources.
+### External CLIProxyAPI server
 
-### Extra managed configuration
+1. Start CLIProxyAPI **8.0.3 or newer** on a machine you control.
+2. Run *Universal Chat Provider: Configure Connection* and enter its URL and API key.
+3. To add or manage accounts through the extension, enter the server’s management key (not its bcrypt hash) in `universalChatProvider.server.managementKey`.
 
-Set `universalChatProvider.server.extraConfig` to a CLIProxyAPI v8 YAML mapping in the multiline settings field. For example:
-
-```yaml
-routing:
-  strategy: fill-first
-  retry:
-    request-retry: 5
-```
-
-Mappings merge recursively; other values replace generated values, and invalid YAML is rejected before a requested restart stops the server.
-
-<details>
-<summary>Managed-server updates</summary>
-
-Updates download automatically by default and restart the managed server as soon as no requests are active. Change `universalChatProvider.server.updatePolicy` to `suggestUpdates` or `manual` if you'd rather review or pin them yourself. Manual mode uses the configured version, which defaults to `latest`; enter an exact version (8.0.3 or newer) to pin it. An installed release older than 8.0.3 is replaced with a supported one regardless of the update policy.
-
-</details>
-
-<details>
-<summary>Bring your own CLIProxyAPI server</summary>
-
-Prefer to run CLIProxyAPI yourself, such as on a remote or shared machine?
-
-1. Set `universalChatProvider.server.mode` to `external`.
-2. Start CLIProxyAPI and complete the provider login there.
-3. Use the **Import API Key** notification action when a local config is found, or run *Configure Connection* to enter the URL and key manually.
-
-The server must run CLIProxyAPI 8.0.3 or newer. Adding or removing an OpenAI-compatible endpoint through the extension saves the server's `config.yaml` in the v8 layout; CLIProxyAPI keeps unrecognized sections as comments.
-
-The API key is stored in VS Code `SecretStorage`. In external mode, the extension never starts or stops the server. To use **Add Account** and **Manage Accounts**, enter your server's existing management key, not its bcrypt hash, in `universalChatProvider.server.managementKey`. Managed mode generates and stores its own key automatically and ignores this setting.
-
-</details>
+The extension never starts, stops, updates, or configures CLIProxyAPI. The API key is stored in VS Code `SecretStorage`; the management key remains in your VS Code settings.
 
 ## Development
 
