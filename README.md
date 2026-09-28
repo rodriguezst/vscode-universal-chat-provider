@@ -59,6 +59,17 @@
 
 Manage everything from the status bar item or the *Universal Chat Provider: Manage Provider* command — inspect quota, redeem OpenAI-provided Codex reset credits, and list/remove accounts.
 
+## Model metadata
+
+CLIProxyAPI supplies the available models and their metadata through `/v1/models` and
+`/v1/models?client_version=0.156.1`. Proxy metadata takes precedence for all providers,
+including custom aliases and configured context windows and thinking levels.
+The CLIProxyAPI model catalog and models.dev fill in missing metadata; models.dev also
+supplies Fast Mode pricing. Catalog entries are not required when the proxy supplies
+a context window. If no output limit is available, the extension uses an 8,192-token
+output budget, capped at the context size. This is a fallback budget, not a claim
+about the model's actual maximum output.
+
 ## Commit messages, titles, and summaries
 
 Let your models handle Copilot's light background tasks and Explore searches. Run *Universal Chat Provider: Set Utility Model* (or use the status bar menu), pick a model (and thinking effort), done. A small, fast, inexpensive model is usually the best fit. Clear it to undo.

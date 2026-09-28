@@ -75,6 +75,7 @@ export interface ModelMappingOptions {
   onCollision?: (message: string) => void
 }
 
+const DEFAULT_OUTPUT_TOKENS = 8192
 const REASONING_NAME_SUFFIX = /\s+\((?:thinking|none|minimal|low|medium|high|extra high|xhigh|max|ultra|auto)\)$/i
 const OAUTH_OWNERS = new Set(['openai', 'anthropic', 'google', 'moonshot', 'xai', 'antigravity', 'cognition', 'meta'])
 const WEB_SEARCH_TOOL_TYPES = new Set(['text', 'text_and_image'])
@@ -114,33 +115,32 @@ export function mapProxyModels(
     seen.add(entry.id)
 
     const oauth = entry.owned_by !== undefined && OAUTH_OWNERS.has(entry.owned_by.toLowerCase())
-    const detail = oauth ? metadataById.get(entry.id) : undefined
+    const detail = metadataById.get(entry.id)
     if (isHiddenUpstream(detail)) {
       options.onSkipped?.(entry.id, 'model is hidden upstream')
       continue
     }
     const modelsDevModel = matchCatalogModel(entry.id, catalogs.modelsDev)
     const catalogModel = oauth ? matchCatalogModel(entry.id, catalogs.router) : modelsDevModel
-    if (!oauth && catalogModel === undefined) {
-      options.onSkipped?.(entry.id, 'model is not supported: models.dev metadata is unavailable')
-      continue
-    }
     if (isMediaOnly(entry.id, catalogModel))
       continue
 
-    const totalContext = oauth
-      ? firstPositiveInteger(entry.context_length, detail?.context_window, catalogModel?.context_length, catalogModel?.inputTokenLimit)
-      : firstPositiveInteger(catalogModel?.context_length, catalogModel?.inputTokenLimit)
-    const outputTokens = oauth
-      ? firstPositiveInteger(entry.max_completion_tokens, catalogModel?.max_completion_tokens, catalogModel?.outputTokenLimit)
-      : firstPositiveInteger(catalogModel?.max_completion_tokens, catalogModel?.outputTokenLimit)
-    if (totalContext === undefined || outputTokens === undefined) {
-      options.onSkipped?.(
-        entry.id,
-        'model is not supported: context window and output tokens must be supplied manually',
-      )
+    const totalContext = firstPositiveInteger(
+      detail?.context_window,
+      entry.context_length,
+      detail?.max_context_window,
+      catalogModel?.context_length,
+      catalogModel?.inputTokenLimit,
+    )
+    if (totalContext === undefined) {
+      options.onSkipped?.(entry.id, 'model is not supported: context window is unavailable from CLIProxyAPI and fallback catalogs')
       continue
     }
+    const outputTokens = firstPositiveInteger(
+      entry.max_completion_tokens,
+      catalogModel?.max_completion_tokens,
+      catalogModel?.outputTokenLimit,
+    ) ?? Math.min(DEFAULT_OUTPUT_TOKENS, totalContext)
     const levels = resolveReasoning(detail, catalogModel)
     const advertisedName = detail?.display_name !== undefined && detail.display_name !== entry.id
       ? detail.display_name

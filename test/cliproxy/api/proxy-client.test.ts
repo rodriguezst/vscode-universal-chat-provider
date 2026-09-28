@@ -8,6 +8,34 @@ beforeEach(() => {
 })
 
 describe('cLIProxyClient', () => {
+  it('discovers and maps configured aliases from the versioned model response without catalogs', async () => {
+    const ids = ['GLM-5.3', 'GLM-5.3-Flash']
+    vi.stubGlobal('fetch', vi.fn(async (request: Request) => {
+      if (request.url === 'http://proxy/v1/models')
+        return Response.json({ data: ids.map(id => ({ id, object: 'model', owned_by: 'anthropic' })) })
+      if (request.url === 'http://proxy/v1/models?client_version=0.156.1') {
+        return Response.json({
+          models: ids.map(slug => ({
+            slug,
+            display_name: `Z.ai - ${slug}`,
+            context_window: 1_048_576,
+            max_context_window: 1_048_576,
+            supported_reasoning_levels: [{ effort: 'low' }, { effort: 'high' }, { effort: 'max' }],
+          })),
+        })
+      }
+      throw new Error(`Unexpected URL ${request.url}`)
+    }))
+    const { CLIProxyClient } = await import('@src/cliproxy/api/proxy-client')
+    const { mapProxyModels } = await import('@src/chat/models/model')
+    const { available, metadata } = await new CLIProxyClient('http://proxy', 'key').discover()
+    const models = mapProxyModels(available, metadata, { router: new Map(), modelsDev: new Map() }, {})
+
+    expect(models).toHaveLength(2)
+    expect(models.map(model => [model.id, model.maxInputTokens, model.maxOutputTokens, model.reasoningLevels]))
+      .toEqual(ids.map(id => [id, 1_048_576, 8192, ['low', 'high', 'max']]))
+  })
+
   it('discovers models and tolerates optional metadata failure', async () => {
     const fetchMock = vi.fn(async (request: Request) => {
       if (request.url === 'http://proxy/v1/models')

@@ -13,6 +13,40 @@ function mapProxyModels(
 }
 
 describe('model mapping', () => {
+  it.each(['GLM-5.3', 'GLM-5.3-Flash'])('keeps configured %s aliases without catalog entries or output limits', (id) => {
+    const [model] = mapModels(
+      [{ id, owned_by: 'anthropic' }],
+      [{
+        slug: id,
+        display_name: `Z.ai - ${id}`,
+        context_window: 1_048_576,
+        max_context_window: 1_048_576,
+        supported_reasoning_levels: [{ effort: 'low' }, { effort: 'high' }, { effort: 'max' }],
+      }],
+      { router: new Map(), modelsDev: new Map() },
+      {},
+    )
+
+    expect(model).toMatchObject({
+      id,
+      name: `Z.ai - ${id}`,
+      maxInputTokens: 1_048_576,
+      maxOutputTokens: 8192,
+      reasoningLevels: ['low', 'high', 'max'],
+    })
+  })
+
+  it.each(['custom-provider', undefined])('accepts proxy metadata without catalogs for owner %s', (owner) => {
+    const [model] = mapModels(
+      [{ id: 'custom-alias', ...(owner === undefined ? {} : { owned_by: owner }) }],
+      [{ slug: 'custom-alias', max_context_window: 4096, display_name: 'Custom Model' }],
+      { router: new Map(), modelsDev: new Map() },
+      {},
+    )
+
+    expect(model).toMatchObject({ name: 'Custom Model', maxInputTokens: 4096, maxOutputTokens: 4096 })
+  })
+
   it.each([
     ['devin/swe-2', 'cognition', 'SWE-2'],
     ['muse-spark-1.3', 'meta', 'Muse Spark 1.3'],
@@ -35,7 +69,7 @@ describe('model mapping', () => {
     })
   })
 
-  it('uses models.dev exclusively for OpenAI-compatible models', () => {
+  it('prefers proxy metadata over models.dev for OpenAI-compatible models', () => {
     const [model] = mapModels(
       [{ id: 'opencode.ai/deepseek-v4-flash', owned_by: 'opencode.ai', context_length: 272_000 }],
       [{ slug: 'opencode.ai/deepseek-v4-flash', input_modalities: ['text', 'image'] }],
@@ -61,9 +95,9 @@ describe('model mapping', () => {
 
     expect(model).toMatchObject({
       name: 'DeepSeek V4 Flash (New)',
-      maxInputTokens: 616_000,
+      maxInputTokens: 272_000,
       maxOutputTokens: 384_000,
-      capabilities: { imageInput: false, toolCalling: true },
+      capabilities: { imageInput: true, toolCalling: true },
     })
   })
 
@@ -201,7 +235,7 @@ describe('model mapping', () => {
     expect(models).toEqual([])
     expect(skipped).toEqual([{
       id: 'vendor/unknown-model',
-      reason: 'model is not supported: models.dev metadata is unavailable',
+      reason: 'model is not supported: context window is unavailable from CLIProxyAPI and fallback catalogs',
     }])
   })
 
@@ -675,12 +709,12 @@ describe('model mapping', () => {
     expect(models[0]).toMatchObject({
       id: 'sized',
       maxOutputTokens: 32_000,
-      maxInputTokens: 256_000,
+      maxInputTokens: 999,
     })
     expect(skipped).toEqual(['unsized'])
   })
 
-  it('drops models with no output token limit, reporting the skip', () => {
+  it('uses a conservative output budget when no output limit is advertised', () => {
     const skipped: { id: string, reason: string }[] = []
     const models = mapProxyModels(
       [
@@ -692,11 +726,8 @@ describe('model mapping', () => {
       { onSkipped: (id, reason) => skipped.push({ id, reason }) },
     )
 
-    expect(models.map(model => model.id)).toEqual(['sized'])
-    expect(skipped).toEqual([{
-      id: 'no-output',
-      reason: 'model is not supported: context window and output tokens must be supplied manually',
-    }])
+    expect(models.map(model => [model.id, model.maxOutputTokens])).toEqual([['no-output', 8192], ['sized', 32_000]])
+    expect(skipped).toEqual([])
   })
 
   it('drops models the proxy hides or excludes from the api, reporting the skip', () => {
