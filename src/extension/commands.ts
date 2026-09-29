@@ -36,6 +36,7 @@ export function registerCommands(
       void window.showInformationMessage(`CLIProxyAPI exposed ${models.length} chat models.`)
     }, group: 1, label: '$(refresh) Refresh Models', description: 'Reload models and capabilities' },
     { command: 'universalChatProvider.setUtilityModel', run: async () => setUtilityModel(provider), group: 1, label: '$(sparkle) Set Utility Model', description: 'Run Copilot\'s commit messages, titles & summaries on your models' },
+    { command: 'universalChatProvider.generateCommitMessage', run: async () => commands.executeCommand('github.copilot.git.generateCommitMessage'), group: 1, label: '$(sparkle) Generate Commit Message', description: 'Generate a commit message with your configured utility model' },
     { command: 'universalChatProvider.configure', run: async () => provider.configure(), group: 2, label: '$(settings-gear) Configure Connection', description: 'Set the CLIProxyAPI URL and API key' },
     { command: 'universalChatProvider.openSettings', run: async () => commands.executeCommand('workbench.action.openSettings', `@ext:${extensionId}`), group: 3, label: '$(gear) Open Settings', description: 'Edit this extension\'s settings' },
     { command: 'universalChatProvider.showLogs', run: () => output.show(true), group: 3, label: '$(output) Show Extension Logs', description: 'Diagnostics from the extension itself' },

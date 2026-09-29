@@ -74,6 +74,10 @@ about the model's actual maximum output.
 
 Let your models handle Copilot's light background tasks and Explore searches. Run *Universal Chat Provider: Set Utility Model* (or use the status bar menu), pick a model (and thinking effort), done. A small, fast, inexpensive model is usually the best fit. Clear it to undo.
 
+Run *Universal Chat Provider: Generate Commit Message* from the Command Palette or provider menu to generate a message with your configured utility model.
+
+This command works around a VS Code issue reported in [microsoft/vscode#325252](https://github.com/microsoft/vscode/issues/325252) and [microsoft/vscode#335347](https://github.com/microsoft/vscode/issues/335347): the Source Control sparkle button can show **Sign in to use GitHub Copilot** even when BYOK models and both utility models are configured. In affected versions, including 1.139.1, the button routes users who have not completed Copilot setup through sign-in before invoking generation. This extension's command calls `github.copilot.git.generateCommitMessage` directly, so signed-out BYOK users can generate commit messages without changing VS Code's setup state.
+
 <details>
 <summary>How it works</summary>
 
@@ -100,22 +104,22 @@ The extension connects to an external [CLIProxyAPI](https://github.com/router-fo
 
 <!-- configs -->
 
-| Key                                           | Description                                                                                          | Type      | Default                   |
-| --------------------------------------------- | ---------------------------------------------------------------------------------------------------- | --------- | ------------------------- |
+| Key                                           | Description                                                                                                                                                                                                 | Type      | Default                              |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------------------------------ |
 | ▿ <b>Connection</b>                           |
-| `universalChatProvider.baseUrl`               | CLIProxyAPI server URL. The environment variable below takes precedence.                             | `string`  | `"http://127.0.0.1:8317"` |
-| `universalChatProvider.baseUrlEnvVar`          | Environment variable containing the CLIProxyAPI URL. Empty disables lookup.                          | `string`  | `"UNIVERSAL_CHAT_PROVIDER_BASE_URL"` |
-| `universalChatProvider.apiKey`                 | API-key fallback when SecretStorage and the environment provide none. Plain text in settings.         | `string`  | `""`                      |
-| `universalChatProvider.apiKeyEnvVar`           | Environment variable containing the CLIProxyAPI API key. Empty disables lookup.                       | `string`  | `"UNIVERSAL_CHAT_PROVIDER_API_KEY"` |
-| `universalChatProvider.server.managementKey`  | Management key used for account and quota administration. Enter the key itself, not its bcrypt hash. | `string`  | `""`                      |
+| `universalChatProvider.baseUrl`               | CLIProxyAPI server URL. Can also be supplied through the environment variable named by `#universalChatProvider.baseUrlEnvVar#`.                                                                             | `string`  | `"http://127.0.0.1:8317"`            |
+| `universalChatProvider.server.managementKey`  | Management key used for account and quota administration. Enter the key itself, not its bcrypt hash.                                                                                                        | `string`  | `""`                                 |
+| `universalChatProvider.baseUrlEnvVar`         | Environment variable that contains the CLIProxyAPI server URL. Set this to an empty string to disable environment-based URL lookup.                                                                         | `string`  | `"UNIVERSAL_CHAT_PROVIDER_BASE_URL"` |
+| `universalChatProvider.apiKey`                | CLIProxyAPI API key used when neither SecretStorage nor the configured environment variable provides one. A settings file contains this value in plain text; prefer `#universalChatProvider.apiKeyEnvVar#`. | `string`  | `""`                                 |
+| `universalChatProvider.apiKeyEnvVar`          | Environment variable that contains the CLIProxyAPI API key. Set this to an empty string to disable environment-based key lookup.                                                                            | `string`  | `"UNIVERSAL_CHAT_PROVIDER_API_KEY"`  |
 | ▿ <b>Status Bar</b>                           |
-| `universalChatProvider.showQuotaWarnings`     | Warn in the status bar when the model in use is low on quota.                                        | `boolean` | `true`                    |
-| `universalChatProvider.quotaWarningThreshold` | Remaining-quota percent below which the status bar warning appears.                                  | `number`  | `10`                      |
+| `universalChatProvider.showQuotaWarnings`     | Warn in the status bar when the model in use is low on quota.                                                                                                                                               | `boolean` | `true`                               |
+| `universalChatProvider.quotaWarningThreshold` | Remaining-quota percent below which the status bar warning appears.                                                                                                                                         | `number`  | `10`                                 |
 | ▿ <b>Provider Specific</b>                    |
-| `universalChatProvider.codex.webSearch`       | Let Codex look things up online and open web pages while it answers.                                 | `boolean` | `false`                   |
-| `universalChatProvider.claude.webSearch`      | Let Claude look things up online while it answers.                                                   | `boolean` | `false`                   |
+| `universalChatProvider.codex.webSearch`       | Let Codex look things up online and open web pages while it answers.                                                                                                                                        | `boolean` | `false`                              |
+| `universalChatProvider.claude.webSearch`      | Let Claude look things up online while it answers.                                                                                                                                                          | `boolean` | `false`                              |
 | ▿ <b>Advanced</b>                             |
-| `universalChatProvider.debugLevel`            | Diagnostic detail to collect.                                                                        | `string`  | `"off"`                   |
+| `universalChatProvider.debugLevel`            | Diagnostic detail to collect.                                                                                                                                                                               | `string`  | `"off"`                              |
 
 <!-- configs -->
 
@@ -126,18 +130,19 @@ The extension connects to an external [CLIProxyAPI](https://github.com/router-fo
 
 <!-- commands -->
 
-| Command                                  | Title                                                                                |
-| ---------------------------------------- | ------------------------------------------------------------------------------------ |
-| `universalChatProvider.manage`           | Universal Chat Provider: Manage Provider                                             |
-| `universalChatProvider.login`            | Universal Chat Provider: Add Account (Login)                                         |
-| `universalChatProvider.manageAccounts`   | Universal Chat Provider: Manage Accounts                                             |
-| `universalChatProvider.showQuota`        | Universal Chat Provider: Show Quota                                                  |
-| `universalChatProvider.configure`        | Universal Chat Provider: Configure Connection                                        |
-| `universalChatProvider.refresh`          | Universal Chat Provider: Refresh Models                                              |
-| `universalChatProvider.setUtilityModel`  | Universal Chat Provider: Set Utility Model (commit messages, chat titles, summaries) |
-| `universalChatProvider.clearCredentials` | Universal Chat Provider: Clear Stored API Key                                        |
-| `universalChatProvider.showLogs`         | Universal Chat Provider: Show Logs                                                   |
-| `universalChatProvider.openSettings`     | Universal Chat Provider: Open Settings                                               |
+| Command                                       | Title                                                                                |
+| --------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `universalChatProvider.manage`                | Universal Chat Provider: Manage Provider                                             |
+| `universalChatProvider.login`                 | Universal Chat Provider: Add Account (Login)                                         |
+| `universalChatProvider.manageAccounts`        | Universal Chat Provider: Manage Accounts                                             |
+| `universalChatProvider.showQuota`             | Universal Chat Provider: Show Quota                                                  |
+| `universalChatProvider.configure`             | Universal Chat Provider: Configure Connection                                        |
+| `universalChatProvider.refresh`               | Universal Chat Provider: Refresh Models                                              |
+| `universalChatProvider.setUtilityModel`       | Universal Chat Provider: Set Utility Model (commit messages, chat titles, summaries) |
+| `universalChatProvider.generateCommitMessage` | Universal Chat Provider: Generate Commit Message                                     |
+| `universalChatProvider.clearCredentials`      | Universal Chat Provider: Clear Stored API Key                                        |
+| `universalChatProvider.showLogs`              | Universal Chat Provider: Show Logs                                                   |
+| `universalChatProvider.openSettings`          | Universal Chat Provider: Open Settings                                               |
 
 <!-- commands -->
 

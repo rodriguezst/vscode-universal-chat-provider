@@ -79,6 +79,10 @@
         "title": "Universal Chat Provider: Set Utility Model (commit messages, chat titles, summaries)"
       },
       {
+        "command": "universalChatProvider.generateCommitMessage",
+        "title": "Universal Chat Provider: Generate Commit Message"
+      },
+      {
         "command": "universalChatProvider.clearCredentials",
         "title": "Universal Chat Provider: Clear Stored API Key"
       },
